@@ -8,7 +8,7 @@ namespace :telebot do
   task send: :environment do
     Article.parse_not_parsed
     articles = Article.prepare_to_send
-    sent_api_ids = TelegramService.send_article_messages(articles)
+    sent_api_ids = TelegrammNotifier.send_article_messages(articles)
     Article.bulk_update_as_sent(sent_api_ids)
   end
 

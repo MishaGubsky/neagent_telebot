@@ -19,3 +19,5 @@
 .byebug_history
 config/config.rb
 .rvmrc
+public/photos/*
+doc

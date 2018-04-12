@@ -3,8 +3,9 @@ class Article < ApplicationRecord
 
   scope :parsed, -> { where(parsed: true) }
   scope :not_parsed, -> { where(parsed: false) }
-  scope :ready_to_show, -> { where(parsed: true, sent: false) }
+  scope :ready_to_show, -> { where(parsed: true, sent: nil) }
   scope :sent, -> { where(sent: true) }
+  scope :ready_to_clean, -> { sent.where("created_at < '#{(Time.zone.now  - 2.days).to_s(:db)}'") }
 
   def self.get_phone(api_id)
     link = "http://neagent.by/realt/showphone/#{api_id}"
@@ -38,13 +39,10 @@ class Article < ApplicationRecord
       a.attributes.symbolize_keys.merge({
         image_url: a.is_local?('image_url', a.image_url) ? ImageService.read(a.image_url) : a.image_url,
         price: a.is_local?('price', a.price) ? ImageService.read(a.price) : a.price,
-        street: a.is_local?('street', a.street) ? ImageService.read(a.street) : a.street
+        street: a.is_local?('street', a.street) ? ImageService.read(a.street) : a.street,
+        normolized_price: a.price_normalize
       })
     end
-  end
-
-  def is_local?(type, path)
-    "public/photos/#{type}-#{api_id}.png" == path
   end
 
   def self.base64?(value)
@@ -57,9 +55,17 @@ class Article < ApplicationRecord
 
   def self.clean
     types = ['image_url', 'price', 'street']
-    sent.each do |a|
+    ready_to_clean.each do |a|
       types.each { |t| File.delete(a.send(t)) if a.is_local?(t, a.send(t)) && File.exist?(a.send(t)) }
     end
-    sent.delete_all
+    ready_to_clean.delete_all
+  end
+
+  def is_local?(type, path)
+    "public/photos/#{type}-#{api_id}.png" == path
+  end
+
+  def price_normalize
+    price.gsub(/[^\d]+/, '')
   end
 end

@@ -63,8 +63,8 @@ class ArticleParser
   end
 
   def get_price
-    # dom.css('.itm_head comment()').first.text[/>([^<]*)</, 1] ||
-    dom.css('.itm_price img').first['src']
+    new_dom = Nokogiri::HTML(open(get_url).read)
+    new_dom.css('.itm_head comment()').first.text[/>([^<]*)</, 1].gsub(/&.*;/, '') || dom.css('.itm_price img').first['src']
   rescue => e
     Rails.logger.error "Get_price failed api_id: #{get_api_id}, message: #{e.message}"
     ''

@@ -1,10 +1,10 @@
 
-class TelegramService
+class TelegrammNotifier
 
-  def self.send_article_messages(artiles)
+  def self.send_article_messages(articles)
     sent_api_ids = []
-    user_chat_ids.each do |chat_id|
-      artiles.each do |a|
+    articles.each do |a|
+      user_chat_ids(a).each do |chat_id|
         send_article_message(chat_id, a)
         sent_api_ids << a[:api_id]
       end
@@ -14,8 +14,14 @@ class TelegramService
 
   private
 
-  def self.user_chat_ids
-    User.subscribed.pluck(:channel_id)
+  def self.user_chat_ids(article)
+    with_filters = User.subscribed.with_filters
+    without_filters = User.subscribed.without_filters
+    Filter.all.each do |f|
+      with_filters = with_filters.send(:"#{f.filter_type}_filter", f, article[:normolized_price])
+    end
+    users = without_filters + with_filters
+    users.pluck(:channel_id)
   end
 
   def self.send_photo_type_message(chat_id, article, type)
@@ -31,7 +37,12 @@ class TelegramService
   end
 
   def self.send_article_message(chat_id, article)
-    [:image_url, :street, :price].each {|t| send_photo_type_message(chat_id, article, t)}
+    send_photo_type_message(chat_id, article, :image_url)
+
+    [:street, :price].each do |t|
+      send_photo_type_message(chat_id, article, t) if article[:price].class != String
+      send_html_type_message(chat_id, article, t, "<b>#{t.upcase}: </b>#{article[t]}") if article[t].class == String
+    end
 
     send_html_type_message(chat_id, article, :room_count, "<b>Rooms count: </b>#{article[:room_count]}")
     send_html_type_message(chat_id, article, :post_date, "<b>Post date: </b>#{article[:post_date]}")
